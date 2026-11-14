@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: easyproxy-manifest-only
+    runtime: docker
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: ./start.sh
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: LOG_LEVEL
+        value: "WARNING"
+      - key: MANIFEST_ONLY
+        value: "true"
+      - key: DISABLE_PROXY
+        value: "true"
+      - key: DISABLE_HLS_PROXY
+        value: "true"
+      - key: DISABLE_DASH_PROXY
+        value: "true"
+      - key: DISABLE_RECORDING
+        value: "true"
+      - key: LOG_LEVEL
+        value: "WARNING"
+      - key: FLARESOLVERR_URL
+        value: "http://127.0.0.1:8191"
+    healthCheckPath: /health
+    autoDeploy: true

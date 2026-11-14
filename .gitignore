@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Data
+*.db
+*.sqlite
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Cache
+.cache/
+*.cache
+
+# Docker
+.docker/
