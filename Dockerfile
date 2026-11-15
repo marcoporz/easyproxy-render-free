@@ -45,22 +45,55 @@ ENV LOG_LEVEL=WARNING
 # Expose port
 EXPOSE 10000
 
-# Start FlareSolverr + EasyProxy
-# FlareSolverr runs on port 8191 (internal), EasyProxy on port 10000
-CMD cd /opt/flaresolverr && \
-    PORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \
-    PYTHONPATH=/opt/flaresolverr/src \
-    /opt/fsvenv/bin/python -u src/flaresolverr.py & \
-    sleep 5 && \
-    curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1 && \
-    echo "=== FLARESOLVERR READY ===" && \
-    cd /app && \
-    export PORT=10000 && \
-    export FLARESOLVERR_URL="http://127.0.0.1:8191" && \
-    export LOG_LEVEL=WARNING && \
-    export MANIFEST_ONLY=true && \
-    export DISABLE_PROXY=true && \
-    export DISABLE_HLS_PROXY=true && \
-    export DISABLE_DASH_PROXY=true && \
-    export DISABLE_RECORDING=true && \
-    exec python3 main.py
+# Create startup script
+RUN cat > /start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "=== Starting FlareSolverr on port 8191 ==="
+cd /opt/flaresolverr
+PORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \
+PYTHONPATH=/opt/flaresolverr/src \
+/opt/fsvenv/bin/python -u src/flaresolverr.py > /tmp/flaresolverr.log 2>&1 &
+FLARESOLVERR_PID=$!
+
+echo "Waiting for FlareSolverr to be ready..."
+for i in {1..30}; do
+    if curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then
+        echo "=== FLARESOLVERR READY ==="
+        break
+    fi
+    if ! kill -0 $FLARESOLVERR_PID 2>/dev/null; then
+        echo "ERROR: FlareSolverr process died"
+        cat /tmp/flaresolverr.log
+        exit 1
+    fi
+    sleep 1
+done
+
+if ! curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then
+    echo "ERROR: FlareSolverr failed to start after 30s"
+    cat /tmp/flaresolverr.log
+    exit 1
+fi
+
+echo "=== Starting EasyProxy Manifest-Only on port 10000 ==="
+cd /app
+export PORT=10000
+export FLARESOLVERR_URL="http://127.0.0.1:8191"
+export LOG_LEVEL=WARNING
+export MANIFEST_ONLY=true
+export DISABLE_PROXY=true
+export DISABLE_HLS_PROXY=true
+export DISABLE_DASH_PROXY=true
+export DISABLE_RECORDING=true
+
+# Trap signals to kill FlareSolverr on exit
+trap "kill $FLARESOLVERR_PID 2>/dev/null; exit 0" SIGTERM SIGINT
+
+exec python3 main.py
+EOF
+chmod +x /start.sh
+
+# Start
+CMD ["/start.sh"]
