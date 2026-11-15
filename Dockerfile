@@ -45,9 +45,22 @@ ENV LOG_LEVEL=WARNING
 # Expose port
 EXPOSE 10000
 
-# Startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-# Start
-CMD ["/app/start.sh"]
+# Start FlareSolverr + EasyProxy
+# FlareSolverr runs on port 8191 (internal), EasyProxy on port 10000
+CMD cd /opt/flaresolverr && \
+    PORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \
+    PYTHONPATH=/opt/flaresolverr/src \
+    /opt/fsvenv/bin/python -u src/flaresolverr.py & \
+    sleep 5 && \
+    curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1 && \
+    echo "=== FLARESOLVERR READY ===" && \
+    cd /app && \
+    export PORT=10000 && \
+    export FLARESOLVERR_URL="http://127.0.0.1:8191" && \
+    export LOG_LEVEL=WARNING && \
+    export MANIFEST_ONLY=true && \
+    export DISABLE_PROXY=true && \
+    export DISABLE_HLS_PROXY=true && \
+    export DISABLE_DASH_PROXY=true && \
+    export DISABLE_RECORDING=true && \
+    exec python3 main.py
