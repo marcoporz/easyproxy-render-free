@@ -113,12 +113,10 @@ def setup_stream_routes(app):
     
     # Route base (senza config)
     app.router.add_get("/stream/", stream_handler)
-    app.router.add_head("/stream/", stream_handler)
     app.router.add_options("/stream/", stream_options)
     
     # Route con config base64: /<b64>/stream/
     app.router.add_get("/{config}/stream/", stream_handler)
-    app.router.add_head("/{config}/stream/", stream_handler)
     app.router.add_options("/{config}/stream/", stream_options)
 
 
