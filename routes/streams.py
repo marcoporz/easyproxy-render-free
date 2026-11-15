@@ -1,29 +1,16 @@
 """
 Streams routes - Endpoint /stream/{type}/{id}.json per Stremio.
 Restituisce lista di stream che passano per il nostro proxy headers-only.
+Supporta configurazione via base64 nell'URL, header X-API-Password, Authorization Bearer, query param pwd.
 """
 import logging
 import json
-import base64
 import urllib.parse
 from aiohttp import web
 
+from routes.utils import extract_config
+
 logger = logging.getLogger(__name__)
-
-
-def _decode_config(b64config: str) -> dict:
-    """Decodifica config da base64 URL-safe."""
-    if not b64config:
-        return {}
-    try:
-        b64config = b64config.rstrip("=")
-        padding = 4 - len(b64config) % 4
-        if padding != 4:
-            b64config += "=" * padding
-        decoded = base64.urlsafe_b64decode(b64config).decode()
-        return json.loads(decoded)
-    except Exception:
-        return {}
 
 
 def _build_stream_proxy_url(base_url: str, stream_url: str, referer: str = "", origin: str = "", ua: str = "", extra_headers: dict = None) -> str:
@@ -47,9 +34,8 @@ def setup_streams_routes(app):
     
     async def streams_handler(request):
         """Handler per /stream/{type}/{id}.json"""
-        # Estrae config da path se presente
-        b64config = request.match_info.get("config", "")
-        config = _decode_config(b64config) if b64config else {}
+        # Estrae config da tutte le fonti
+        config = extract_config(request)
         
         stream_type = request.match_info.get("type", "")
         stream_id = request.match_info.get("id", "")

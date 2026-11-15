@@ -2,11 +2,14 @@
 Stream routes - Proxy per stream con headers/referer.
 Aggiunge headers necessari e fa redirect 302 al CDN.
 Banda usata: ~1KB per redirect (non segmenti video).
+Supporta configurazione via base64 nell'URL, header X-API-Password, Authorization Bearer, query param pwd.
 """
 import json
 import logging
 import urllib.parse
 from aiohttp import web
+
+from routes.utils import extract_config
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +30,8 @@ def setup_stream_routes(app):
         
         Fa redirect 302 all'URL con headers appropriati.
         """
-        # Estrae config da path se presente
-        b64config = request.match_info.get("config", "")
-        config = _decode_config(b64config) if b64config else {}
+        # Estrae config da tutte le fonti
+        config = extract_config(request)
         
         stream_url = request.query.get("url", "")
         referer = request.query.get("referer", "")
@@ -90,7 +92,7 @@ def setup_stream_routes(app):
             pass
         
         # Log per debug
-        logger.info(f"Stream redirect: {stream_url[:100]}... | Referer: {referer[:50] if referer else 'none'}")
+        logger.info(f"Stream redirect: {stream_url[:100]}... | Referer: {referer[:50] if referer else 'none'} | Config keys: {list(config.keys())}")
         
         # Redirect 302 con headers - usa HTTPFound per redirect corretto
         response = web.HTTPFound(location=stream_url)
@@ -119,20 +121,3 @@ def setup_stream_routes(app):
     # Route con config base64: /<b64>/stream/
     app.router.add_get("/{config}/stream/", stream_handler)
     app.router.add_options("/{config}/stream/", stream_options)
-
-
-def _decode_config(b64config: str) -> dict:
-    """Decodifica config da base64 URL-safe."""
-    if not b64config:
-        return {}
-    try:
-        import base64
-        import json
-        b64config = b64config.rstrip("=")
-        padding = 4 - len(b64config) % 4
-        if padding != 4:
-            b64config += "=" * padding
-        decoded = base64.urlsafe_b64decode(b64config).decode()
-        return json.loads(decoded)
-    except Exception:
-        return {}
