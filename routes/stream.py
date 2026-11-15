@@ -3,6 +3,7 @@ Stream routes - Proxy per stream con headers/referer.
 Aggiunge headers necessari e fa redirect 302 al CDN.
 Banda usata: ~1KB per redirect (non segmenti video).
 """
+import json
 import logging
 import urllib.parse
 from aiohttp import web
