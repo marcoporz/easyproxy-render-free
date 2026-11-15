@@ -64,28 +64,6 @@ from routes.stream import setup_stream_routes
 from routes.streams import setup_streams_routes
 
 
-async def init_flaresolverr():
-    """Inizializza e avvia FlareSolverr per scraping Cloudflare."""
-    import os
-    if not os.environ.get("FLARESOLVERR_ENABLED", "true").lower() == "true":
-        logger.info("FlareSolverr disabilitato")
-        return
-    
-    from services.flaresolverr import FlareSolverrService
-    global flaresolverr_service
-    
-    flaresolverr_service = FlareSolverrService()
-    await flaresolverr_service.start()
-    logger.info("FlareSolverr avviato")
-
-
-async def cleanup_flaresolverr(app):
-    """Cleanup FlareSolverr allo shutdown."""
-    global flaresolverr_service
-    if flaresolverr_service:
-        await flaresolverr_service.stop()
-
-
 def create_app():
     """Crea l'applicazione aiohttp SOLO per manifest/catalog/meta."""
     app = web.Application(client_max_size=4 * 1024 * 1024)
@@ -182,25 +160,8 @@ def create_app():
     return app
 
 
-async def on_startup(app):
-    """Avvio servizi."""
-    logger.info("=== Avvio EasyProxy Manifest-Only ===")
-    
-    # Avvia FlareSolverr solo per scraping
-    await init_flaresolverr()
-    
-    logger.info(f"=== EasyProxy Manifest-Only avviato su porta {PORT} ===")
-
-
-async def on_cleanup(app):
-    """Cleanup allo shutdown."""
-    logger.info("=== Shutdown ===")
-    await cleanup_flaresolverr(app)
-
-
 # Variabili globali
 PORT = int(os.environ.get("PORT", 10000))
-flaresolverr_service = None
 
 
 def get_memory_usage():
@@ -221,10 +182,6 @@ def main():
     logger.info("Modalità: Manifest-Only (nessun proxy video)")
     
     app = create_app()
-    
-    # Registra eventi startup/shutdown
-    app.on_startup.append(on_startup)
-    app.on_cleanup.append(on_cleanup)
     
     # Avvia server
     web.run_app(
