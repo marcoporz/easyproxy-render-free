@@ -19,16 +19,13 @@ log() {
 }
 
 # Start FlareSolverr
-log() {
-    echo "[$(date '+%H:%M:%S')] $*"
-}
-
 start_flaresolverr() {
     log "Starting FlareSolverr on port 8191..."
     
     cd /opt/flaresolverr
     PORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \
-    /opt/fsvenv/bin/python -u -m flaresolverr &
+    PYTHONPATH=/opt/flaresolverr/src \
+    /opt/fsvenv/bin/python -u src/flaresolverr.py &
     FLARESOLVERR_PID=$!
     
     # Wait for FlareSolverr to be ready

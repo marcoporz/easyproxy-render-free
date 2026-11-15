@@ -19,7 +19,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
 # Install FlareSolverr
 echo "=== Installing FlareSolverr ==="
 mkdir -p /opt/flaresolverr /opt/fsvenv
-if [ ! -d "/opt/flaresolverr" ]; then
+if [ ! -d "/opt/flaresolverr/.git" ]; then
     git clone --depth 1 --branch v3.5.2 https://github.com/FlareSolverr/FlareSolverr.git /opt/flaresolverr
 fi
 python3 -m venv /opt/fsvenv
