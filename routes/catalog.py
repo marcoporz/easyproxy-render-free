@@ -1,12 +1,29 @@
 """
 Catalog routes - Cataloghi Stremio (anime, film, serie).
+Supporta configurazione via base64 nell'URL: /<b64config>/catalog/{id}.json
 """
 import logging
 import json
+import base64
 from typing import List, Dict
 from aiohttp import web
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_config(b64config: str) -> dict:
+    """Decodifica config da base64 URL-safe."""
+    if not b64config:
+        return {}
+    try:
+        b64config = b64config.rstrip("=")
+        padding = 4 - len(b64config) % 4
+        if padding != 4:
+            b64config += "=" * padding
+        decoded = base64.urlsafe_b64decode(b64config).decode()
+        return json.loads(decoded)
+    except Exception:
+        return {}
 
 
 def setup_catalog_routes(app):
@@ -14,19 +31,27 @@ def setup_catalog_routes(app):
     
     async def catalog_handler(request):
         """Handler per cataloghi Stremio."""
+        # Estrae config da path se presente
+        b64config = request.match_info.get("config", "")
+        config = _decode_config(b64config)
+        
         catalog_id = request.match_info.get("id", "")
         extra = request.query
         search = extra.get("search", "")
         skip = int(extra.get("skip", 0))
         genre = extra.get("genre", "")
         
-        logger.info(f"Catalog request: {catalog_id}, search={search}, skip={skip}")
+        logger.info(f"Catalog request: config_keys={list(config.keys())}, catalog_id={catalog_id}, search={search}, skip={skip}")
         
         # Import scraper
         from services.scraper_manager import get_scraper
         
         try:
             scraper = await get_scraper()
+            
+            # Passa config allo scraper per Real-Debrid se presente
+            if hasattr(scraper, 'set_config'):
+                scraper.set_config(config)
             
             if catalog_id.startswith("easyproxy-search"):
                 if not search:
@@ -63,7 +88,10 @@ def setup_catalog_routes(app):
             logging.error(f"Catalog error: {e}")
             return web.json_response({"metas": []})
     
+    # Route base (senza config)
     app.router.add_get("/catalog/{id}.json", catalog_handler)
+    # Route con config base64: /<b64>/catalog/{id}.json
+    app.router.add_get("/{config}/catalog/{id}.json", catalog_handler)
 
 
 def _convert_to_stremio_meta(results: List[Dict], meta_type: str) -> List[Dict]:

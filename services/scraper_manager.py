@@ -6,6 +6,7 @@ import asyncio
 import logging
 import json
 import re
+import time
 from typing import List, Dict, Any, Optional
 from urllib.parse import quote, urljoin, urlparse
 from datetime import datetime, timedelta
@@ -23,6 +24,12 @@ class ScraperManager:
         self.session: Optional[aiohttp.ClientSession] = None
         self.cache = {}
         self.flaresolverr_url = "http://127.0.0.1:8191"
+        self.config = {}  # Config da base64 (Real-Debrid token, password, etc.)
+    
+    def set_config(self, config: dict):
+        """Imposta configurazione (Real-Debrid token, password, etc.)."""
+        self.config = config or {}
+        logger.info(f"Scraper config updated: rd={'rd' in self.config}, pwd={'pwd' in self.config}")
         
     async def __aenter__(self):
         timeout = aiohttp.ClientTimeout(total=30, connect=10)

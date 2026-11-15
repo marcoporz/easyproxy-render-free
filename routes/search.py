@@ -1,10 +1,28 @@
 """
 Search routes - Ricerca unificata per Stremio.
+Supporta configurazione via base64 nell'URL: /<b64config>/search
 """
 import logging
+import json
+import base64
 from aiohttp import web
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_config(b64config: str) -> dict:
+    """Decodifica config da base64 URL-safe."""
+    if not b64config:
+        return {}
+    try:
+        b64config = b64config.rstrip("=")
+        padding = 4 - len(b64config) % 4
+        if padding != 4:
+            b64config += "=" * padding
+        decoded = base64.urlsafe_b64decode(b64config).decode()
+        return json.loads(decoded)
+    except Exception:
+        return {}
 
 
 def setup_search_routes(app):
@@ -12,9 +30,13 @@ def setup_search_routes(app):
     
     async def search_handler(request):
         """Handler per ricerca Stremio."""
+        # Estrae config da path se presente
+        b64config = request.match_info.get("config", "")
+        config = _decode_config(b64config)
+        
         search_query = request.query.get("search", "")
         
-        logger.info(f"Search request: {search_query}")
+        logger.info(f"Search request: config_keys={list(config.keys())}, search={search_query}")
         
         if not search_query:
             return web.json_response({"metas": []})
@@ -24,6 +46,11 @@ def setup_search_routes(app):
         
         try:
             scraper = await get_scraper()
+            
+            # Passa config allo scraper per Real-Debrid se presente
+            if hasattr(scraper, 'set_config'):
+                scraper.set_config(config)
+            
             results = await scraper.search(search_query)
             metas = _convert_to_stremio_meta(results)
             
@@ -37,7 +64,10 @@ def setup_search_routes(app):
             logging.error(f"Search error: {e}")
             return web.json_response({"metas": []})
     
+    # Route base (senza config)
     app.router.add_get("/search", search_handler)
+    # Route con config base64: /<b64>/search
+    app.router.add_get("/{config}/search", search_handler)
 
 
 def _convert_to_stremio_meta(results: list) -> list:
