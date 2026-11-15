@@ -46,54 +46,7 @@ ENV LOG_LEVEL=WARNING
 EXPOSE 10000
 
 # Create startup script
-RUN cat > /start.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "=== Starting FlareSolverr on port 8191 ==="
-cd /opt/flaresolverr
-PORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \
-PYTHONPATH=/opt/flaresolverr/src \
-/opt/fsvenv/bin/python -u src/flaresolverr.py > /tmp/flaresolverr.log 2>&1 &
-FLARESOLVERR_PID=$!
-
-echo "Waiting for FlareSolverr to be ready..."
-for i in {1..30}; do
-    if curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then
-        echo "=== FLARESOLVERR READY ==="
-        break
-    fi
-    if ! kill -0 $FLARESOLVERR_PID 2>/dev/null; then
-        echo "ERROR: FlareSolverr process died"
-        cat /tmp/flaresolverr.log
-        exit 1
-    fi
-    sleep 1
-done
-
-if ! curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then
-    echo "ERROR: FlareSolverr failed to start after 30s"
-    cat /tmp/flaresolverr.log
-    exit 1
-fi
-
-echo "=== Starting EasyProxy Manifest-Only on port 10000 ==="
-cd /app
-export PORT=10000
-export FLARESOLVERR_URL="http://127.0.0.1:8191"
-export LOG_LEVEL=WARNING
-export MANIFEST_ONLY=true
-export DISABLE_PROXY=true
-export DISABLE_HLS_PROXY=true
-export DISABLE_DASH_PROXY=true
-export DISABLE_RECORDING=true
-
-# Trap signals to kill FlareSolverr on exit
-trap "kill $FLARESOLVERR_PID 2>/dev/null; exit 0" SIGTERM SIGINT
-
-exec python3 main.py
-EOF
-chmod +x /start.sh
+RUN echo '#!/bin/bash\nset -e\n\necho "=== Starting FlareSolverr on port 8191 ==="\ncd /opt/flaresolverr\nPORT=8191 HOST=127.0.0.1 LOG_LEVEL=ERROR LOG_HTML=false \\\nPYTHONPATH=/opt/flaresolverr/src \\\n/opt/fsvenv/bin/python -u src/flaresolverr.py > /tmp/flaresolverr.log 2>&1 &\nFLARESOLVERR_PID=$!\n\necho "Waiting for FlareSolverr to be ready..."\nfor i in {1..30}; do\n    if curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then\n        echo "=== FLARESOLVERR READY ==="\n        break\n    fi\n    if ! kill -0 $FLARESOLVERR_PID 2>/dev/null; then\n        echo "ERROR: FlareSolverr process died"\n        cat /tmp/flaresolverr.log\n        exit 1\n    fi\n    sleep 1\ndone\n\nif ! curl -sf "http://127.0.0.1:8191/v1" >/dev/null 2>&1; then\n    echo "ERROR: FlareSolverr failed to start after 30s"\n    cat /tmp/flaresolverr.log\n    exit 1\nfi\n\necho "=== Starting EasyProxy Manifest-Only on port 10000 ==="\ncd /app\nexport PORT=10000\nexport FLARESOLVERR_URL="http://127.0.0.1:8191"\nexport LOG_LEVEL=WARNING\nexport MANIFEST_ONLY=true\nexport DISABLE_PROXY=true\nexport DISABLE_HLS_PROXY=true\nexport DISABLE_DASH_PROXY=true\nexport DISABLE_RECORDING=true\n\n# Trap signals to kill FlareSolverr on exit\ntrap "kill $FLARESOLVERR_PID 2>/dev/null; exit 0" SIGTERM SIGINT\n\nexec python3 main.py' > /start.sh && chmod +x /start.sh
 
 # Start
 CMD ["/start.sh"]
