@@ -60,6 +60,8 @@ from routes.meta import setup_meta_routes
 from routes.search import setup_search_routes
 from routes.configure import setup_configure_routes
 from routes.health import setup_health_routes
+from routes.stream import setup_stream_routes
+from routes.streams import setup_streams_routes
 
 
 async def init_flaresolverr():
@@ -133,30 +135,34 @@ def create_app():
             "name": "EasyProxy Manifest-Only",
             "version": "2.0.0-manifest-only",
             "mode": "manifest-only",
-            "description": "Solo manifest/catalog/meta - NESSUN proxy video",
+            "description": "Manifest/catalog/meta + stream proxy headers-only (redirect 302, ~1KB)",
             "endpoints": {
                 "manifest": "/manifest.json",
                 "configure": "/configure",
                 "catalog": "/catalog/*",
                 "meta": "/meta/*",
                 "search": "/search",
+                "stream": "/stream/?url=...&referer=...",
                 "health": "/health",
             },
             "disabled": [
-                "proxy video/segmenti",
-                "HLS proxy",
-                "DASH proxy",
+                "proxy video/segmenti (HLS/DASH proxy completo)",
                 "recording/DVR",
                 "torrent download",
+            ],
+            "enabled": [
+                "stream proxy headers-only (redirect 302 con Referer/Origin/UA)",
             ],
             "flaresolverr": "Solo per scraping Cloudflare durante catalog/search",
         })
     
-    # Registra route SOLO per manifest/catalog/meta/configure/health
+    # Registra route per manifest/catalog/meta/stream/configure/health
     setup_manifest_routes(app)
     setup_catalog_routes(app)
     setup_meta_routes(app)
     setup_search_routes(app)
+    setup_stream_routes(app)
+    setup_streams_routes(app)
     setup_configure_routes(app)
     setup_health_routes(app)
     
