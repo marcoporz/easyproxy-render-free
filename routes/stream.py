@@ -92,13 +92,13 @@ def setup_stream_routes(app):
         # Log per debug
         logger.info(f"Stream redirect: {stream_url[:100]}... | Referer: {referer[:50] if referer else 'none'}")
         
-        # Redirect 302 con headers
-        return web.Response(
-            status=302,
-            headers=redirect_headers,
-            text=f"Redirecting to stream... <a href=\"{stream_url}\">{stream_url}</a>",
-            content_type="text/html; charset=utf-8"
-        )
+        # Redirect 302 con headers - usa HTTPFound per redirect corretto
+        response = web.HTTPFound(location=stream_url)
+        # Aggiunge headers extra
+        for k, v in redirect_headers.items():
+            if k != "Location":  # Location è gestito da HTTPFound
+                response.headers[k] = v
+        return response
     
     async def stream_options(request):
         """Handle CORS preflight."""
